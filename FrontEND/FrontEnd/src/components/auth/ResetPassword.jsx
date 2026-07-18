@@ -1,17 +1,12 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from '../../hooks/useNavigation.js';
 import '../styles/resetPassword.css';
 
-const ResetPassword = ({ token }) => {
-  const [formData, setFormData] = useState({
-    newPassword: '',
-    confirmPassword: '',
-  });
+const ResetPassword = ({ token, onResetComplete }) => {
+  const [formData, setFormData] = useState({ newPassword: '', confirmPassword: '' });
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const { resetPassword, loading } = useAuth();
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -27,7 +22,6 @@ const ResetPassword = ({ token }) => {
       setError('Passwords do not match');
       return;
     }
-
     if (formData.newPassword.length < 6) {
       setError('Password must be at least 6 characters');
       return;
@@ -36,7 +30,7 @@ const ResetPassword = ({ token }) => {
     try {
       await resetPassword(token, formData.newPassword);
       setMessage('Password reset successfully! Redirecting to sign in…');
-      setTimeout(() => navigate('login'), 2000);
+      setTimeout(() => onResetComplete(), 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to reset password');
     }
@@ -62,17 +56,8 @@ const ResetPassword = ({ token }) => {
             <p>Must be at least 6 characters</p>
           </div>
 
-          {error && (
-            <div className="reset-error">
-              <span>⚠</span> {error}
-            </div>
-          )}
-
-          {message && (
-            <div className="reset-success">
-              <span>✓</span> {message}
-            </div>
-          )}
+          {error && <div className="reset-error"><span>⚠</span> {error}</div>}
+          {message && <div className="reset-success"><span>✓</span> {message}</div>}
 
           <form onSubmit={handleSubmit} className="reset-form">
             <div className="reset-field">
@@ -104,11 +89,7 @@ const ResetPassword = ({ token }) => {
             </div>
 
             <button type="submit" className="reset-submit" disabled={loading || !!message}>
-              {loading ? (
-                <span className="reset-spinner" />
-              ) : (
-                'Reset password'
-              )}
+              {loading ? <span className="reset-spinner" /> : 'Reset password'}
             </button>
           </form>
         </div>

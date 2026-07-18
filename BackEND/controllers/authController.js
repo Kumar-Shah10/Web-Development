@@ -2,11 +2,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { v4: uuidv4 } = require('uuid');
 const { User, PasswordResetToken, pool } = require('../models/index');
-
-/* ── demo email helper ── */
-const sendResetEmail = (email, token) => {
-  console.log(`[DEMO] Reset link for ${email}: http://localhost:3000/reset-password?token=${token}`);
-};
+const { sendResetEmail } = require('../utils/mailer');
 
 /* ── register ── */
 exports.register = async (req, res) => {
@@ -83,14 +79,17 @@ exports.forgotPassword = async (req, res) => {
     if (!email) return res.status(400).json({ error: 'Email is required' });
 
     const user = await User.findByEmail(email);
-    if (!user)
+
+    // Always return the same response to avoid leaking which emails are registered
+    if (!user) {
       return res.json({ message: 'If email exists, reset link will be sent' });
+    }
 
     const resetToken = uuidv4();
     const expiresAt  = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour
 
     await PasswordResetToken.create(user.id, resetToken, expiresAt);
-    sendResetEmail(email, resetToken);
+    await sendResetEmail(email, resetToken);
 
     res.json({ message: 'If email exists, reset link will be sent' });
   } catch (error) {
@@ -189,11 +188,7 @@ exports.updateTheme = async (req, res) => {
   }
 };
 
-/* ════════════════════════════════════════════════════════
-   CHANGE PASSWORD
-   Route: PUT /api/auth/change-password  (protected)
-   Requires the user to supply their current password first.
-════════════════════════════════════════════════════════ */
+/* ── change password (authenticated) ── */
 exports.changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
@@ -204,14 +199,12 @@ exports.changePassword = async (req, res) => {
     if (newPassword.length < 8)
       return res.status(400).json({ error: 'New password must be at least 8 characters' });
 
-    /* verify the current password against the stored hash */
     const user = await User.findById(req.user.id);
     const valid = await bcrypt.compare(currentPassword, user.password);
 
     if (!valid)
       return res.status(400).json({ error: 'Current password is incorrect' });
 
-    /* hash and save the new password */
     const hashed = await bcrypt.hash(newPassword, 10);
     await pool.query(
       'UPDATE users SET password = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2',

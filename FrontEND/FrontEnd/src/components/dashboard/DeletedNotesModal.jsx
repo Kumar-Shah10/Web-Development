@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNotes } from '../../hooks/useNotes';
+import {
+  FiTrash2, FiX, FiRotateCcw, FiCheckSquare, FiInbox,
+} from 'react-icons/fi';
 import '../styles/deleted-modal.css';
 
 const DeletedNotesModal = ({ onClose, onRestore }) => {
@@ -96,7 +99,7 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
         {/* ── header ── */}
         <div className="dn-header">
           <div className="dn-header-left">
-            <span className="dn-header-icon">⊗</span>
+            <span className="dn-header-icon"><FiTrash2 size={18} /></span>
             <div>
               <h2 className="dn-title">Trash</h2>
               <p className="dn-subtitle">
@@ -107,10 +110,7 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
             </div>
           </div>
           <button className="dn-close" onClick={onClose} title="Close">
-            <svg viewBox="0 0 12 12" fill="none" width="12" height="12">
-              <path d="M1 1l10 10M11 1L1 11" stroke="currentColor" strokeWidth="1.8"
-                    strokeLinecap="round"/>
-            </svg>
+            <FiX size={14} />
           </button>
         </div>
 
@@ -125,7 +125,7 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
 
           {!loading && deletedNotes.length === 0 && (
             <div className="dn-empty">
-              <div className="dn-empty-icon">✦</div>
+              <div className="dn-empty-icon"><FiInbox size={32} /></div>
               <h3>Trash is empty</h3>
               <p>Deleted notes will appear here. You can restore or permanently remove them.</p>
             </div>
@@ -146,7 +146,11 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
                   <div className="dn-item-body">
                     <div className="dn-item-top">
                       <span className="dn-item-title">{note.title || 'Untitled'}</span>
-                      {note.type === 'todo' && <span className="dn-badge">☑ To-Do</span>}
+                      {note.type === 'todo' && (
+                        <span className="dn-badge">
+                          <FiCheckSquare size={11} /> To-Do
+                        </span>
+                      )}
                     </div>
 
                     {preview(note) && (
@@ -171,7 +175,11 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
                       disabled={restoringId === note.id || deletingAll}
                       title="Restore note"
                     >
-                      {restoringId === note.id ? '…' : '↩ Restore'}
+                      {restoringId === note.id ? (
+                        '…'
+                      ) : (
+                        <><FiRotateCcw size={12} /> Restore</>
+                      )}
                     </button>
 
                     {confirmId === note.id ? (
@@ -198,7 +206,7 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
                         disabled={deletingAll}
                         title="Permanently delete"
                       >
-                        ⊗ Delete
+                        <FiTrash2 size={12} /> Delete
                       </button>
                     )}
                   </div>
@@ -240,7 +248,7 @@ const DeletedNotesModal = ({ onClose, onRestore }) => {
                 disabled={deletingAll}
                 title="Permanently delete all notes in trash"
               >
-                ⊗ Delete all
+                <FiTrash2 size={12} /> Delete all
               </button>
             )}
 

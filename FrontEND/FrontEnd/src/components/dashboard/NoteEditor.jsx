@@ -27,6 +27,9 @@ const TRACKED = [
   'justifyLeft', 'justifyCenter', 'justifyRight',
 ];
 
+/* ─── autosave delay ─── */
+const AUTOSAVE_DELAY = 5000; 
+
 /* ─── single hook: one selectionchange listener, returns a Set of active cmds ─── */
 function useActiveFormats() {
   const [active, setActive] = useState(new Set());
@@ -47,7 +50,6 @@ function useActiveFormats() {
     };
 
     document.addEventListener('selectionchange', update);
-    // also update on keyup/mouseup inside editor for better responsiveness
     document.addEventListener('keyup', update);
     document.addEventListener('mouseup', update);
     return () => {
@@ -96,7 +98,7 @@ const TodoItem = ({ item, index, onChange, onDelete, onKeyDown, inputRef }) => (
   <div className="ne-todo-row">
     <button
       className={`ne-checkbox${item.done ? ' checked' : ''}`}
-      onMouseDown={e => e.preventDefault()}   /* prevent blur on editor */
+      onMouseDown={e => e.preventDefault()}
       onClick={() => onChange(index, { ...item, done: !item.done })}
     >
       {item.done && <CheckIcon />}
@@ -129,7 +131,6 @@ const NoteEditor = ({
   note, onClose, onSave, onDelete,
   onExportPDF, onTogglePin, onToggleFavorite, onToggleArchive,
 }) => {
-  /* ── derive isTodo from note.type early so all state inits can use it ── */
   const isTodo = note?.type === 'todo';
 
   const [title,      setTitle]      = useState(note?.title || '');
@@ -152,15 +153,15 @@ const NoteEditor = ({
   const [isSaving,   setIsSaving]   = useState(false);
   const [lastSaved,  setLastSaved]  = useState(null);
   const [showColors, setShowColors] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState(null); 
 
   const editorRef    = useRef(null);
   const colorMenuRef = useRef(null);
   const todoRefs     = useRef([]);
+  const autosaveTimerRef = useRef(null);
 
-  /* single listener for all toolbar active states */
   const activeFormats = useActiveFormats();
 
-  /* seed contentEditable once — never use dangerouslySetInnerHTML on editable divs */
   useEffect(() => {
     if (!isTodo && editorRef.current) {
       editorRef.current.innerHTML = note?.content || '';
@@ -169,7 +170,6 @@ const NoteEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* focus first empty todo row on mount for todo notes */
   useEffect(() => {
     if (isTodo) {
       const firstEmpty = todos.findIndex(t => t.text === '');
@@ -179,7 +179,6 @@ const NoteEditor = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /* close color picker on outside click */
   useEffect(() => {
     const h = (e) => {
       if (colorMenuRef.current && !colorMenuRef.current.contains(e.target))
@@ -191,33 +190,57 @@ const NoteEditor = ({
 
   const markDirty = useCallback(() => setIsDirty(true), []);
 
-  /* ── execCommand ──
-     Use onMouseDown + e.preventDefault() to keep focus in the editor.
-     After executing, force a re-read of queryCommandState by dispatching
-     a synthetic selectionchange so the active highlights update instantly. */
   const exec = useCallback((cmd, val = null) => {
     const el = editorRef.current;
     if (!el) return;
     el.focus();
     document.execCommand(cmd, false, val);
-    /* nudge the selectionchange listeners */
     document.dispatchEvent(new Event('selectionchange'));
     markDirty();
   }, [markDirty]);
 
-  /* ── save ── */
-  const handleSave = async () => {
-    setIsSaving(true);
-    try {
-      const body = isTodo
-        ? JSON.stringify(todos)
-        : editorRef.current?.innerHTML || '';
-      await onSave(note.id, title, body, color);
-      setLastSaved(new Date());
-      setIsDirty(false);
-    } catch (e) { console.error(e); }
-    finally { setIsSaving(false); }
-  };
+const noteId = note?.id;
+
+/* ── save (used by both manual Save button and autosave) ── */
+const handleSave = useCallback(async ({ silent = false } = {}) => {
+  if (silent) setAutosaveStatus('saving');
+  else setIsSaving(true);
+
+  try {
+    const body = isTodo
+      ? JSON.stringify(todos)
+      : editorRef.current?.innerHTML || '';
+    await onSave(noteId, title, body, color);
+    setLastSaved(new Date());
+    setIsDirty(false);
+    if (silent) {
+      setAutosaveStatus('saved');
+      setTimeout(() => setAutosaveStatus(null), 2000);
+    }
+  } catch (e) {
+    console.error(e);
+    if (silent) setAutosaveStatus(null);
+  } finally {
+    if (!silent) setIsSaving(false);
+  }
+}, [isTodo, todos, title, color, onSave, noteId]);
+
+ 
+  useEffect(() => {
+    if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+
+    if (isDirty && !isSaving) {
+      autosaveTimerRef.current = setTimeout(() => {
+        handleSave({ silent: true });
+      }, AUTOSAVE_DELAY);
+    }
+
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, [isDirty, isSaving, handleSave]);
+
+  const handleSaveClick = () => handleSave({ silent: false });
 
   /* ── todo helpers ── */
   const todoChange = (i, updated) => {
@@ -227,7 +250,7 @@ const NoteEditor = ({
 
   const todoDelete = (i) => {
     setTodos(t => {
-      if (t.length <= 1) return [{ text: '', done: false }]; // keep at least one row
+      if (t.length <= 1) return [{ text: '', done: false }];
       return t.filter((_, idx) => idx !== i);
     });
     markDirty();
@@ -257,12 +280,10 @@ const NoteEditor = ({
     setTimeout(() => todoRefs.current[todos.length]?.focus(), 0);
   };
 
-  /* ── progress ── */
   const doneCount  = todos.filter(t => t.done).length;
   const totalCount = todos.length;
   const pct        = totalCount > 0 ? Math.round((doneCount / totalCount) * 100) : 0;
 
-  /* ── toolbar groups ── */
   const GROUPS = [
     {
       key: 'fmt',
@@ -316,7 +337,7 @@ const NoteEditor = ({
             className={`ne-action${note?.favorite ? ' active' : ''}`}
             onClick={() => onToggleFavorite(note.id)}
           >
-            ♥ {note?.favorite ? 'Saved' : 'Save'}
+            ♥ {note?.favorite ? 'Fav' : 'Fav'}
           </button>
           <button
             className={`ne-action${note?.archived ? ' active' : ''}`}
@@ -354,7 +375,7 @@ const NoteEditor = ({
           </button>
           <button
             className="ne-save"
-            onClick={handleSave}
+            onClick={handleSaveClick}
             disabled={!isDirty || isSaving}
           >
             {isSaving ? '…' : '✓ Save'}
@@ -377,7 +398,7 @@ const NoteEditor = ({
                     className={`ne-tbtn${isActive ? ' active' : ''}`}
                     title={b.title}
                     onMouseDown={e => {
-                      e.preventDefault();           // keep focus in editor
+                      e.preventDefault();
                       exec(b.cmd, b.value || null);
                     }}
                   >
@@ -388,19 +409,8 @@ const NoteEditor = ({
             </div>
           ))}
 
-          {/* link + clear formatting */}
+          {/* clear formatting */}
           <div className="ne-tgroup">
-            <button
-              className="ne-tbtn"
-              title="Insert link"
-              onMouseDown={e => {
-                e.preventDefault();
-                const u = prompt('URL:');
-                if (u) exec('createLink', u);
-              }}
-            >
-              <span className="tl">🔗</span>
-            </button>
             <button
               className="ne-tbtn"
               title="Clear formatting"
@@ -430,10 +440,16 @@ const NoteEditor = ({
             {note?.createdAt && (
               <span className="ne-meta">Created {fmtDate(note.createdAt)}</span>
             )}
-            {lastSaved && (
+            {autosaveStatus === 'saving' && (
+              <span className="ne-meta">Autosaving…</span>
+            )}
+            {autosaveStatus === 'saved' && (
+              <span className="ne-meta ne-saved">✓ Autosaved</span>
+            )}
+            {autosaveStatus === null && lastSaved && (
               <span className="ne-meta ne-saved">✓ Saved {fmtDate(lastSaved)}</span>
             )}
-            {isDirty && !lastSaved && (
+            {autosaveStatus === null && isDirty && !lastSaved && (
               <span className="ne-meta ne-unsaved">● Unsaved changes</span>
             )}
           </div>
@@ -455,15 +471,12 @@ const NoteEditor = ({
         {isTodo && (
           <div className="ne-todo-card">
 
-            {/* pink header */}
             <div className="ne-todo-header">
               <span className="ne-todo-title">MY PLANS</span>
             </div>
 
-            {/* cream body */}
             <div className="ne-todo-body">
 
-              {/* progress bar */}
               {totalCount > 0 && (
                 <div className="ne-progress-wrap">
                   <div className="ne-progress-track">
@@ -473,7 +486,6 @@ const NoteEditor = ({
                 </div>
               )}
 
-              {/* scrollable task rows */}
               <div className="ne-todo-scroll">
                 {todos.map((item, i) => (
                   <TodoItem
@@ -488,7 +500,6 @@ const NoteEditor = ({
                 ))}
               </div>
 
-              {/* add task */}
               <button className="ne-todo-add" onClick={addTodo}>
                 <svg viewBox="0 0 12 12" fill="none" width="11" height="11">
                   <path d="M6 1v10M1 6h10" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"/>

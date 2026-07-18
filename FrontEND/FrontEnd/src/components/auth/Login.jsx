@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from '../../hooks/useNavigation.js';
+import { FaEye, FaEyeSlash, FaArrowLeft } from 'react-icons/fa';
 import '../styles/login.css';
 
 const Login = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [error, setError] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  
   const { login, loading } = useAuth();
   const navigate = useNavigate();
 
@@ -13,6 +16,10 @@ const Login = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     setError('');
+  };
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
   };
 
   const handleSubmit = async (e) => {
@@ -67,23 +74,37 @@ const Login = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
               />
             </div>
 
-            <div className="login-field">
-              
-              <input
-                type="password"
-                id="password"
-                name="password"
-                value={formData.password}
-                onChange={handleChange}
-                placeholder="••••••••"
-                required
-                autoComplete="current-password"
-              />
-
+            <div className="login-field password-field">
               <div className="login-field-row">
                 <label htmlFor="password">Password</label>
-                <button type="button" onClick={onSwitchToForgotPassword} className="login-forgot">
+                <button 
+                  type="button" 
+                  onClick={onSwitchToForgotPassword} 
+                  className="login-forgot"
+                >
                   Forgot password?
+                </button>
+              </div>
+
+              <div className="password-input-wrapper">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={formData.password}
+                  onChange={handleChange}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                />
+                
+                <button
+                  type="button"
+                  className="password-toggle"
+                  onClick={togglePasswordVisibility}
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
                 </button>
               </div>
             </div>
@@ -103,6 +124,15 @@ const Login = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
               Create one
             </button>
           </p>
+
+          {/* Back to Home - Placed below "Don't have an account?" */}
+          <button 
+            onClick={() => navigate('home')} 
+            className="back-to-home-btn"
+          >
+            <FaArrowLeft /> Back to Home
+          </button>
+
         </div>
       </div>
     </div>

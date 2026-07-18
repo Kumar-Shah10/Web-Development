@@ -273,3 +273,53 @@
     flex: 1;
   }
 }
+
+.password-input-wrapper {
+  position: relative;
+}
+
+.password-input-wrapper input {
+  width: 100%;
+  padding-right: 50px;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 14px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #333;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.password-toggle:hover {
+  color: #000;
+}
+/* Back to Home Button */
+.back-to-home-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  margin-top: 16px;
+  width: 100%;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.back-to-home-btn:hover {
+  color: var(--text-light);
+  background: rgba(212, 170, 100, 0.08);
+}
