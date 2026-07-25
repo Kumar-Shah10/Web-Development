@@ -118,8 +118,8 @@ const ProfileModal = ({ onClose }) => {
   const handlePasswordSubmit = async (e) => {
     e.preventDefault();
     setPwError(''); setPwSuccess('');
-    if (pwData.next.length < 8) {
-      setPwError('New password must be at least 8 characters.'); return;
+    if (pwData.next.length < 6) {
+      setPwError('New password must be at least 6 characters.'); return;
     }
     if (pwData.next !== pwData.confirm) {
       setPwError('New passwords do not match.'); return;
@@ -284,7 +284,7 @@ const ProfileModal = ({ onClose }) => {
                     <input id="pm-next" className="pm-input" type="password"
                            name="next" value={pwData.next}
                            onChange={handlePwChange}
-                           placeholder="Min. 8 characters"
+                           placeholder="Min. 6 characters"
                            autoComplete="new-password" required/>
                   </div>
                 </div>

@@ -28,45 +28,41 @@ import {
 import '../styles/dashboard.css';
 
 const NAV_ITEMS = [
-  { id: 'home', label: 'Home', icon: <FiHome size={15} /> },
-  { id: 'all', label: 'All Notes', icon: <FiFileText size={15} /> },
-  { id: 'pinned', label: 'Pinned', icon: <FiBookmark size={15} /> },
+  { id: 'home',      label: 'Home',      icon: <FiHome size={15} /> },
+  { id: 'all',       label: 'All Notes', icon: <FiFileText size={15} /> },
+  { id: 'pinned',    label: 'Pinned',    icon: <FiBookmark size={15} /> },
   { id: 'favorites', label: 'Favorites', icon: <FiHeart size={15} /> },
-  { id: 'archived', label: 'Archived', icon: <FiArchive size={15} /> },
+  { id: 'archived',  label: 'Archived',  icon: <FiArchive size={15} /> },
 ];
 
 const Dashboard = ({ onLogout }) => {
   const { user, updateTheme } = useAuth();
   const { allNotes: rawAllNotes, fetchAllNotes, createNote } = useNotes();
-  const navigate = useNavigate();
-  const params = useParams();
+  const navigate   = useNavigate();
+  const params     = useParams();
 
-  const [currentTheme, setCurrentThemeState] = useState(getTheme());
-  const navTab = params.tab || 'home'; 
-  const [showProfileModal, setShowProfileModal] = useState(false);
-  const [showDeletedModal, setShowDeletedModal] = useState(false);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [showNewMenu, setShowNewMenu] = useState(false);
-  const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [currentTheme,      setCurrentThemeState] = useState(getTheme());
+  const [showProfileModal,  setShowProfileModal]   = useState(false);
+  const [showDeletedModal,  setShowDeletedModal]   = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm]  = useState(false);
+  const [showNewMenu,       setShowNewMenu]        = useState(false);
+  const [refreshTrigger,    setRefreshTrigger]     = useState(0);
+  const [pendingNote,       setPendingNote]        = useState(null); // new note to auto-open
 
   const newMenuRef = useRef(null);
-
-  const allNotes = useMemo(() => rawAllNotes ?? [], [rawAllNotes, refreshTrigger]);
+  const navTab     = params.tab || 'home';
+  const allNotes   = useMemo(() => rawAllNotes ?? [], [rawAllNotes, refreshTrigger]);
 
   const refreshAll = useCallback(() => {
     fetchAllNotes();
     setRefreshTrigger(prev => prev + 1);
   }, [fetchAllNotes]);
 
-  useEffect(() => {
-    fetchAllNotes();
-  }, [fetchAllNotes]);
+  useEffect(() => { fetchAllNotes(); }, [fetchAllNotes]);
 
   useEffect(() => {
     document.body.classList.toggle('dark-mode', currentTheme === 'dark');
   }, [currentTheme]);
-
-
 
   useEffect(() => {
     const handler = (e) => {
@@ -89,7 +85,8 @@ const Dashboard = ({ onLogout }) => {
       const initialContent = type === 'todo'
         ? JSON.stringify(Array.from({ length: 5 }, () => ({ text: '', done: false })))
         : '';
-      await createNote('Untitled', initialContent, type);
+      const newNote = await createNote('Untitled', initialContent, type); // ← capture return
+      setPendingNote(newNote);           // ← store so AllNotesPage can open it
       navigate('dashboard', { tab: 'all' });
       refreshAll();
     } catch (e) { console.error(e); }
@@ -100,25 +97,32 @@ const Dashboard = ({ onLogout }) => {
     return allNotes.filter(n => {
       if (getIsDeleted(n)) return false;
       const archived = getIsArchived(n);
-      if (tab === 'all') return !archived;
-      if (tab === 'pinned') return getIsPinned(n) && !archived;
+      if (tab === 'all')       return !archived;
+      if (tab === 'pinned')    return getIsPinned(n) && !archived;
       if (tab === 'favorites') return getIsFavorite(n) && !archived;
-      if (tab === 'archived') return archived;
+      if (tab === 'archived')  return archived;
       return false;
     }).length;
   }, [allNotes]);
-  
-const handleNavClick = (id) => {
-  navigate('dashboard', { tab: id });
-};
+
+  const handleNavClick = (id) => {
+    navigate('dashboard', { tab: id });
+  };
 
   const renderPage = () => {
     const props = { refreshAll };
     switch (navTab) {
-      case 'all':       return <AllNotesPage {...props} />;
-      case 'pinned':    return <PinnedNotesPage {...props} />;
-      case 'favorites': return <FavoriteNotesPage {...props} />;
-      case 'archived':  return <ArchivedNotesPage {...props} />;
+      case 'all':
+        return (
+          <AllNotesPage
+            {...props}
+            initialNote={pendingNote}
+            onInitialNoteConsumed={() => setPendingNote(null)}
+          />
+        );
+      case 'pinned':    return <PinnedNotesPage    {...props} />;
+      case 'favorites': return <FavoriteNotesPage  {...props} />;
+      case 'archived':  return <ArchivedNotesPage  {...props} />;
       default:          return null;
     }
   };
@@ -127,7 +131,7 @@ const handleNavClick = (id) => {
 
   return (
     <div className="db-root">
-      {/* SIDEBAR */}
+      {/* ── SIDEBAR ── */}
       <aside className="db-sidebar">
         <div className="db-brand">
           <FiStar size={18} color="var(--gold)" />
@@ -162,7 +166,12 @@ const handleNavClick = (id) => {
           <button className="db-user-row" onClick={() => setShowProfileModal(true)}>
             <div className="db-avatar">
               {avatarSrc ? (
-                <img src={avatarSrc} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+                <img
+                  src={avatarSrc}
+                  alt="avatar"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }}
+                  onError={e => { e.target.style.display = 'none'; }}
+                />
               ) : (
                 initials(user?.username || user?.email)
               )}
@@ -186,7 +195,7 @@ const handleNavClick = (id) => {
         </div>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* ── MAIN ── */}
       <div className="db-main">
         {navTab === 'home' ? (
           <HomeViewInternal
@@ -204,7 +213,7 @@ const handleNavClick = (id) => {
         )}
       </div>
 
-      {/* Logout Confirmation Modal */}
+      {/* ── MODALS ── */}
       {showLogoutConfirm && (
         <div className="db-modal-overlay">
           <div className="db-modal db-confirm-modal">
@@ -213,12 +222,9 @@ const handleNavClick = (id) => {
             <p className="db-confirm-body">You'll need to sign in again to access your notes.</p>
             <div className="db-confirm-actions">
               <button className="db-confirm-cancel" onClick={() => setShowLogoutConfirm(false)}>Cancel</button>
-              <button 
-                className="db-confirm-delete" 
-                onClick={() => {
-                  setShowLogoutConfirm(false);
-                  onLogout?.();
-                }}
+              <button
+                className="db-confirm-delete"
+                onClick={() => { setShowLogoutConfirm(false); onLogout?.(); }}
                 style={{ background: 'var(--gold)', color: '#0f0e0c' }}
               >
                 Sign out
@@ -229,6 +235,7 @@ const handleNavClick = (id) => {
       )}
 
       {showProfileModal && <ProfileModal onClose={() => setShowProfileModal(false)} />}
+
       {showDeletedModal && (
         <DeletedNotesModal
           onClose={() => setShowDeletedModal(false)}
@@ -239,14 +246,14 @@ const handleNavClick = (id) => {
   );
 };
 
-/* ==================== HOME VIEW ==================== */
+/* ── HOME VIEW ── */
 const HomeViewInternal = ({
   user, allNotes, countFor, onNavigate, onCreateNote,
-  newMenuRef, showNewMenu, setShowNewMenu
+  newMenuRef, showNewMenu, setShowNewMenu,
 }) => {
-  const hour = new Date().getHours();
+  const hour     = new Date().getHours();
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
-  const name = user?.username || 'there';
+  const name     = user?.username || 'there';
 
   const recentNotes = [...(allNotes ?? [])]
     .filter(n => !getIsArchived(n) && !getIsDeleted(n))
@@ -254,10 +261,10 @@ const HomeViewInternal = ({
     .slice(0, 4);
 
   const SECTIONS = [
-    { id: 'all', label: 'All Notes', icon: <FiFileText size={20} />, color: '#d4aa64' },
-    { id: 'pinned', label: 'Pinned', icon: <FiBookmark size={20} />, color: '#a78bfa' },
-    { id: 'favorites', label: 'Favorites', icon: <FiHeart size={20} />, color: '#f87171' },
-    { id: 'archived', label: 'Archived', icon: <FiArchive size={20} />, color: '#6b7280' },
+    { id: 'all',       label: 'All Notes', icon: <FiFileText size={20} />, color: '#d4aa64' },
+    { id: 'pinned',    label: 'Pinned',    icon: <FiBookmark size={20} />, color: '#a78bfa' },
+    { id: 'favorites', label: 'Favorites', icon: <FiHeart size={20} />,    color: '#f87171' },
+    { id: 'archived',  label: 'Archived',  icon: <FiArchive size={20} />,  color: '#6b7280' },
   ];
 
   return (
@@ -319,12 +326,15 @@ const HomeViewInternal = ({
                 <div className="db-section-label" style={{ marginTop: 36 }}>Recently edited</div>
                 <div className="db-grid" style={{ marginTop: 14 }}>
                   {recentNotes.map((note, i) => (
-                    <div key={note.id} className="db-card" 
-                         style={{ animationDelay: `${i * 40}ms`, cursor: 'pointer' }}
-                         onClick={() => onNavigate('all')}>
+                    <div
+                      key={note.id}
+                      className="db-card"
+                      style={{ animationDelay: `${i * 40}ms`, cursor: 'pointer' }}
+                      onClick={() => onNavigate('all')}
+                    >
                       <div className="db-card-title">{note.title || 'Untitled'}</div>
                       <div className="db-card-preview">
-                        {note.type === 'todo' 
+                        {note.type === 'todo'
                           ? (() => {
                               try {
                                 const items = JSON.parse(note.content || '[]');
@@ -352,4 +362,4 @@ const HomeViewInternal = ({
   );
 };
 
-export default Dashboard;
+export default Dashboard

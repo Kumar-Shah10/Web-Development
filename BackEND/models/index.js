@@ -41,20 +41,9 @@ async function initializeDatabase() {
       )
     `);
 
-    // If the table already existed without the type column, add it safely:
-    await pool.query(`
-      ALTER TABLE notes ADD COLUMN IF NOT EXISTS type VARCHAR(20) DEFAULT 'note'
-    `);
+   
 
-    // Note tags table
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS note_tags (
-        id         SERIAL PRIMARY KEY,
-        note_id    INTEGER NOT NULL REFERENCES notes(id) ON DELETE CASCADE,
-        tag        VARCHAR(100) NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `);
+   
 
     // Password reset tokens table
     await pool.query(`

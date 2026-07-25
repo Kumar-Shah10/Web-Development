@@ -1,10 +1,9 @@
 // App.jsx
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { getAuthToken, getUser } from './utils/storage';
 import { useAuth } from './hooks/useAuth';
 import { NavigationProvider } from './context/NavigationProvider.jsx';
-import { useNavigate, useCurrentPage } from './hooks/useNavigation.js';
-
+import { useNavigate, useCurrentPage, useParams } from './hooks/useNavigation.js';
 import Home from './components/auth/Home';          
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
@@ -14,23 +13,36 @@ import Dashboard from './components/dashboard/Dashboard';
 
 const AppContent = () => {
   // const [authPage, setAuthPage] = useState('login');
-  const [resetToken, setResetToken] = useState(null);
+  
 
   const { isAuthenticated, logout } = useAuth();
   const navigate = useNavigate();
   const currentPage = useCurrentPage();
+  const params = useParams();
 
-  // Initial routing - UPDATED
-  useEffect(() => {
-    const token = getAuthToken();
-    const user = getUser();
+  // Initial routing
+useEffect(() => {
+  const path = window.location.pathname;
 
-    if (token && user) {
-      navigate('dashboard');
-    } else {
-      navigate('home');
-    }
-  }, [navigate]);
+  // If user opened a special page directly, don't redirect
+  if (
+    path === '/reset-password' ||
+    path === '/login' ||
+    path === '/register' ||
+    path === '/forgot'
+  ) {
+    return;
+  }
+
+  const token = getAuthToken();
+  const user = getUser();
+
+  if (token && user) {
+    navigate('dashboard');
+  } else {
+    navigate('home');
+  }
+}, [navigate]);
 
   // Protect dashboard
   useEffect(() => {
@@ -39,8 +51,7 @@ const AppContent = () => {
     }
   }, [currentPage, isAuthenticated, navigate]);
 
- const handleSwitchToLogin = () => {
-  setResetToken(null);
+const handleSwitchToLogin = () => {
   navigate('login');
 };
 
@@ -71,9 +82,9 @@ const AppContent = () => {
   <ForgotPassword onSwitchToLogin={handleSwitchToLogin} />
 )}
 
-{currentPage === 'reset' && resetToken && (
+{currentPage === 'reset' && (
   <ResetPassword
-    token={resetToken}
+    token={params.token}
     onResetComplete={handleSwitchToLogin}
   />
 )}

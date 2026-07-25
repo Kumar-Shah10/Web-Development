@@ -73,41 +73,41 @@ const Login = ({ onSwitchToRegister, onSwitchToForgotPassword }) => {
                 autoComplete="email"
               />
             </div>
+            
 
-            <div className="login-field password-field">
-              <div className="login-field-row">
-                <label htmlFor="password">Password</label>
-                <button 
-                  type="button" 
-                  onClick={onSwitchToForgotPassword} 
-                  className="login-forgot"
-                >
-                  Forgot password?
-                </button>
-              </div>
+          <div className="login-field password-field">
+  <label htmlFor="password">Password</label>
 
-              <div className="password-input-wrapper">
-                <input
-                  type={showPassword ? 'text' : 'password'}
-                  id="password"
-                  name="password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  placeholder="••••••••"
-                  required
-                  autoComplete="current-password"
-                />
-                
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={togglePasswordVisibility}
-                  aria-label={showPassword ? 'Hide password' : 'Show password'}
-                >
-                  {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
-                </button>
-              </div>
-            </div>
+  <div className="password-input-wrapper">
+    <input
+      type={showPassword ? 'text' : 'password'}
+      id="password"
+      name="password"
+      value={formData.password}
+      onChange={handleChange}
+      placeholder="••••••••"
+      required
+      autoComplete="current-password"
+    />
+
+    <button
+      type="button"
+      className="password-toggle"
+      onClick={togglePasswordVisibility}
+      aria-label={showPassword ? 'Hide password' : 'Show password'}
+    >
+      {showPassword ? <FaEyeSlash size={20} /> : <FaEye size={20} />}
+    </button>
+  </div>
+
+  <button
+    type="button"
+    onClick={onSwitchToForgotPassword}
+    className="login-forgot"
+  >
+    Forgot password?
+  </button>
+</div>
 
             <button type="submit" className="login-submit" disabled={loading}>
               {loading ? (

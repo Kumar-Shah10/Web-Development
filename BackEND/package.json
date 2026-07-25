@@ -28,6 +28,9 @@
     "uuid": "^14.0.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-basic-ssl": "^2.3.0"
+    "@types/jest": "^30.0.0",
+    "@vitejs/plugin-basic-ssl": "^2.3.0",
+    "jest": "^30.4.2",
+    "supertest": "^7.2.2"
   }
 }

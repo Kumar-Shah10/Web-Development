@@ -10,16 +10,16 @@ import { NoteCard, DeleteConfirmModal } from './dashboardComponents';
 
 import '../styles/dashboard.css';
 
-const AllNotesPage = ({ refreshAll }) => {
+const AllNotesPage = ({ refreshAll, initialNote, onInitialNoteConsumed }) => {
   const {
     notes, loading,
     fetchNotes, updateNote, deleteNote,
     togglePin, toggleArchive, toggleFavorite,
   } = useNotes();
 
-  const [activeNote, setActiveNote] = useState(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortOrder, setSortOrder] = useState('desc');
+  const [activeNote,    setActiveNote]    = useState(initialNote ?? null);
+  const [searchTerm,    setSearchTerm]    = useState('');
+  const [sortOrder,     setSortOrder]     = useState('desc');
   const [deleteConfirm, setDeleteConfirm] = useState(null);
 
   const filters = useMemo(() => ({
@@ -33,18 +33,24 @@ const AllNotesPage = ({ refreshAll }) => {
     fetchCurrentNotes();
   }, [fetchCurrentNotes]);
 
+  // Clear pendingNote in Dashboard after consuming it (runs once on mount)
+  useEffect(() => {
+    if (initialNote) onInitialNoteConsumed?.();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleSave = async (id, title, content, color) => {
     try {
       await updateNote(id, title, content, color);
       fetchCurrentNotes();
-      refreshAll();
+      refreshAll?.();
     } catch (e) { console.error(e); }
   };
 
   const handleExportPDF = async (id) => {
     try {
       const note = notes.find(n => n.id === id);
-      const res = await notesAPI.exportToPDF(id);
+      const res  = await notesAPI.exportToPDF(id);
       downloadPDF(res.data, `${note?.title ?? 'note'}.pdf`);
     } catch (e) { console.error(e); }
   };
@@ -54,7 +60,7 @@ const AllNotesPage = ({ refreshAll }) => {
       await togglePin(id);
       fetchCurrentNotes();
       setActiveNote(prev => prev?.id === id ? { ...prev, pinned: !prev.pinned } : prev);
-      refreshAll();
+      refreshAll?.();
     } catch (e) { console.error(e); }
   };
 
@@ -63,7 +69,7 @@ const AllNotesPage = ({ refreshAll }) => {
       await toggleFavorite(id);
       fetchCurrentNotes();
       setActiveNote(prev => prev?.id === id ? { ...prev, favorite: !prev.favorite } : prev);
-      refreshAll();
+      refreshAll?.();
     } catch (e) { console.error(e); }
   };
 
@@ -72,7 +78,7 @@ const AllNotesPage = ({ refreshAll }) => {
       await toggleArchive(id);
       if (activeNote?.id === id) setActiveNote(null);
       fetchCurrentNotes();
-      refreshAll();
+      refreshAll?.();
     } catch (e) { console.error(e); }
   };
 
@@ -82,7 +88,7 @@ const AllNotesPage = ({ refreshAll }) => {
     if (activeNote?.id === deleteConfirm) setActiveNote(null);
     setDeleteConfirm(null);
     fetchCurrentNotes();
-    refreshAll();
+    refreshAll?.();
   };
 
   const sortedNotes = useMemo(() => {
@@ -97,7 +103,7 @@ const AllNotesPage = ({ refreshAll }) => {
     });
   }, [notes, sortOrder]);
 
-  const pinnedNotes = sortedNotes.filter(getIsPinned);
+  const pinnedNotes   = sortedNotes.filter(getIsPinned);
   const unpinnedNotes = sortedNotes.filter(n => !getIsPinned(n));
 
   return (
@@ -150,10 +156,8 @@ const AllNotesPage = ({ refreshAll }) => {
                 </>
               )}
 
-              {(pinnedNotes.length > 0 || unpinnedNotes.length > 0) && (
-                <div className="db-section-label" style={{ marginTop: pinnedNotes.length > 0 ? 28 : 0 }}>
-                  {pinnedNotes.length > 0 ? 'Other' : ''}
-                </div>
+              {pinnedNotes.length > 0 && unpinnedNotes.length > 0 && (
+                <div className="db-section-label" style={{ marginTop: 28 }}>Other</div>
               )}
 
               <div className="db-grid">
